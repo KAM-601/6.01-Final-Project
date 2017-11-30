@@ -3,7 +3,7 @@ import time
 
 def getAvgDrift(gyro):
 
-    print 'getAvgDrift begin'
+    print('getAvgDrift begin')
 
     gyroXAngle = gyroYAngle = gyroZAngle = 0
 
@@ -16,7 +16,7 @@ def getAvgDrift(gyro):
         gyroZAngle += readout[2]
         time.sleep(0.02)
 
-    print 'getAvgDrift end'
+    print('getAvgDrift end')
         
     return (
         gyroXAngle / sampleCnt,
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
 
         if (loopCnt > 0 and (loopCnt % 25) == 0):
-            print 'X: ' + str(gyroXAngle) + ' Y: ' + str(gyroYAngle) + ' Z: ' + str(gyroZAngle)
+            print('X: ' + str(gyroXAngle) + ' Y: ' + str(gyroYAngle) + ' Z: ' + str(gyroZAngle))
             loopCnt = 0
 
         loopCnt += 1

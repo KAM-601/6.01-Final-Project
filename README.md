@@ -7,7 +7,10 @@ For our final project, we would like to implement a control system for the lab r
 
 ## Setup
 
-
+1. Make sure you install the Adafruit_Python_GPIO Library:
+    `$ git clone https://github.com/adafruit/Adafruit_Python_GPIO.git
+     $ cd Adafruit_Python_GPIO
+     $ python3 setup.py install` 
 
 ## Development Notes
 
