@@ -43,7 +43,7 @@ def confidentConfig():
 while True:
     voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
     print("Voltage after flex sensor:", voltage, "Volts")
-    print("Corresponds to a FV of:", mapping(voltage, FLEXED_V, RELAXED_V, FV_MIN, FV_MAX), "m/s")
+    print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
     time.sleep(1)  #relax for 1 second before continuing
 
     ## General plan:
