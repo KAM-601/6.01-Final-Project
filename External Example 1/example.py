@@ -50,7 +50,8 @@ if __name__ == '__main__':
 
 
         if (loopCnt > 0 and (loopCnt % 25) == 0):
-            print('X: ' + str(gyroXAngle) + ' Y: ' + str(gyroYAngle) + ' Z: ' + str(gyroZAngle))
+            print('X: ' + str(gyroXAngle) + ' Y: ' + str(gyroYAngle)+ ' Z: ' + str(gyroZAngle))
+            print('X: ' + str(readout[0]) + ' Y: ' + str(readout[1])+ ' Z: ' + str(readout[2]))
             loopCnt = 0
 
         loopCnt += 1

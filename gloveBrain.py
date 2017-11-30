@@ -4,17 +4,24 @@
 ## make robot motion decisions, and send to the robot.
 
 import spidev #import SPI library
+import Adafruit_LSM303
 import time
 
 RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
 FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
 FV_MAX = .5 # The max velocity we would like for the robot
 FV_MIN = -.5 # The min velocity we would like for the robot
-# FV_GAIN = 1
+MAX_Y = 1000
+MIN_Y = -1000
+RV_MAX = .5
+RV_MIN = -.5
 
 spi=spidev.SpiDev() #create an SPI device object
 spi.open(0,0) #tell it which select pin and SPI channel to use
 spi.max_speed_hz = 1953000 #Set SPI CLK frequency...don't change this...will only lead to heartache.
+
+# Create a LSM303 instance.
+lsm303 = Adafruit_LSM303.LSM303()
 
 ## Simple function to read the value of a channel from the MCP3008
 ## (channel is 0 to 7 inclusive as described in diagram above)
@@ -43,9 +50,16 @@ def confidentConfig():
     pass
 
 while True:
+    
+    accel, mag = lsm303.read()
+    # Grab the X, Y, Z components from the reading and print them out.
+    accel_x, accel_y, accel_z = accel
+    
     voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
     print("Voltage after flex sensor:", voltage, "Volts")
     print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
+    print("Accelerometer Readings in X: ", accel_x, ", Y: ", accel_y, ", and Z: ", accel_z)
+    print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX))
     print()
     time.sleep(1)  #relax for 1 second before continuing
 
