@@ -27,12 +27,14 @@ def readValue(channel):
 ## Need to measure a voltage greater than 3.3V?  Or less than 0V?
 ## Too bad! You'll have to shift it...you can do that using op amps!
 
+## Function that takes a value and range and maps that value to a value in
+## a different range
 def mapping(val, lo, hi, mappedLo, mappedHi):
     if val > hi:
         return mappedHi
     if val < lo:
-        return mappedLo
-    return (val - lo) / (hi - lo) * (mappedHi - mappedLo) + mappedLo
+        return mappedLo # First sees if function needs to clip
+    return (val - lo) / (hi - lo) * (mappedHi - mappedLo) + mappedLo #Otherwise return mapping
 
 def moveInstruction(voltage):
     pass
