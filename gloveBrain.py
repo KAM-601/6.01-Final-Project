@@ -25,5 +25,6 @@ def readValue(channel):
 import time
 
 while True:
-    print(readValue(0)) #read and print voltage on channel 5 of ADC (pin 6)
+    print("Flex" + str(readValue(0))) #read and print voltage on channel 5 of ADC (pin 6)
+    print("GYRO" + str(readValue(1)))
     time.sleep(1)  #relax for 1 second before continuing
