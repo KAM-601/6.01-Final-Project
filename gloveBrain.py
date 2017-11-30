@@ -6,6 +6,12 @@
 import spidev #import SPI library
 import time
 
+RELAXED_V = 1.5 # The voltage we found when the flex sensor was fully relaxed
+FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
+FV_MAX = 1 # The max velocity we would like for the robot
+FV_MIN = -1 # The min velocity we would like for the robot
+# FV_GAIN = 1
+
 spi=spidev.SpiDev() #create an SPI device object
 spi.open(0,0) #tell it which select pin and SPI channel to use
 spi.max_speed_hz = 1953000 #Set SPI CLK frequency...don't change this...will only lead to heartache.
@@ -21,14 +27,23 @@ def readValue(channel):
 ## Need to measure a voltage greater than 3.3V?  Or less than 0V?
 ## Too bad! You'll have to shift it...you can do that using op amps!
 
+def mapping(val, lo, hi, mappedLo, mappedHi):
+    if val > hi:
+        return mappedHi
+    if val < lo:
+        return mappedLo
+    return (val - lo) / (hi - lo) * (mappedHi - mappedLo) + mappedLo
+
+def moveInstruction(voltage):
+    pass
+
 def confidentConfig():
     pass
 
-def moveInstruction(v):
-    pass
-
 while True:
-    print("Voltage after flex sensor:", readValue(0)) #read and print voltage on channel 0 of ADC (pin 1)
+    voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
+    print("Voltage after flex sensor:", voltage, "Volts")
+    print("Corresponds to a FV of:", mapping(voltage, FLEXED_V, RELAXED_V, FV_MIN, FV_MAX), "m/s")
     time.sleep(1)  #relax for 1 second before continuing
 
     ## General plan:
