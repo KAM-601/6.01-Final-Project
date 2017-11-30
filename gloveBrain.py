@@ -28,12 +28,7 @@ def moveInstruction(v):
     pass
 
 while True:
-<<<<<<< HEAD
-    print("Flex" + str(readValue(0))) #read and print voltage on channel 5 of ADC (pin 6)
-    print("GYRO" + str(readValue(1)))
-=======
-    print(readValue(0)) #read and print voltage on channel 0 of ADC (pin 1)
->>>>>>> 16c212062942bf8e98b0285c3598dbaadda60092
+    print("Voltage after flex sensor:", readValue(0)) #read and print voltage on channel 0 of ADC (pin 1)
     time.sleep(1)  #relax for 1 second before continuing
 
     ## General plan:
