@@ -59,7 +59,7 @@ while True:
     print("Voltage after flex sensor:", voltage, "Volts")
     print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
     print("Accelerometer Readings in X: ", accel_x, ", Y: ", accel_y, ", and Z: ", accel_z)
-    print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX))
+    print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
     print()
     time.sleep(1)  #relax for 1 second before continuing
 

@@ -37,9 +37,9 @@ if __name__ == '__main__':
     
     lastTime = time.time() * 1000
 
-    theta = 0
-    psi = 0
-    phi = 0
+    theta = 0.0001
+    psi = 0.0001
+    phi = 0.0001
     
     while True:
 
@@ -52,18 +52,17 @@ if __name__ == '__main__':
         #gyroXAngle += (readout[0] - avgDrift[0]) * gyro.GAIN * (timeDiff / 1000)
         #gyroYAngle += (readout[1] - avgDrift[1]) * gyro.GAIN * (timeDiff / 1000)
         #gyroZAngle += (readout[2] - avgDrift[2]) * gyro.GAIN * (timeDiff / 1000)
-        C = -cos(phi)*cos(psi)*sin(theta)-sin(theta)*sin(phi)*sin(psi)
-        
+        C = -cos(phi)*cos(psi)*sin(theta)-sin(theta)*sin(phi)*sin(psi) 
         if C == 0:
             print("zero error")
-            return 0
+            continue
         
-        phi += -sin(phi)/C*(readout[0] - avgDrift[0])+-cos(phi)/C*(readout[1] - avgDrift[1]) * gyro.GAIN * (timeDiff / 1000)
+        phi += -sin(phi)/C*(readout[0] - avgDrift[0])-cos(phi)/C*(readout[1] - avgDrift[1]) * gyro.GAIN * (timeDiff / 1000)
         theta += -cos(psi)*sin(theta)/C*(readout[0] - avgDrift[0])+sin(theta)*sin(psi)/C*(readout[1] - avgDrift[1]) * gyro.GAIN * (timeDiff / 1000)
         psi += cos(theta)*sin(phi)/C*(readout[0] - avgDrift[0])+cos(theta)*cos(phi)/C*(readout[1] - avgDrift[1])+(readout[2] - avgDrift[2]) * gyro.GAIN * (timeDiff / 1000)
         
         if (loopCnt > 0 and (loopCnt % 25) == 0):
-            print('phi: ' + str(phi) + ' theta: ' + str(theta)+ ' psi: ' + str(psi))
+            print('phi: ' + str(phi) + ' theta: ' + str(theta)+ ' psi: ' + str(psi)+'C'+ str(C))
             loopCnt = 0
 
         loopCnt += 1
