@@ -21,6 +21,7 @@ fv_states = [i for i in range(num_states)]
 rv_states = [i for i in range(num_states)]
 fv_belief = uniform_dist(fv_states)
 rv_belief = uniform_dist(rv_states)
+obs_dict = {}
 
 spi=spidev.SpiDev() #create an SPI device object
 spi.open(0,0) #tell it which select pin and SPI channel to use
@@ -28,6 +29,12 @@ spi.max_speed_hz = 1953000 #Set SPI CLK frequency...don't change this...will onl
 
 # Create a LSM303 instance.
 lsm303 = Adafruit_LSM303.LSM303()
+
+def buildObs():
+    for i in range(num_states):
+        obs_dict[i] = mixture(triangle_dist(i, int(num_states/5), 0, num_states-1), uniform_dist(fv_states), .8)
+
+buildObs()
 
 def initialize():
     global fv_states, rv_states
@@ -42,13 +49,25 @@ def initialize():
 def discretize(value, size, max_bin=float('inf'), value_min = 0):
     return max(min(int((value - value_min)/size), max_bin), 0)
 
-def buildObs(state):
-    return mixture(triangle_dist(state, int(num_states/5)), uniform_dist(fv_states), .8)
-
-
 #method to clip x to be within lo and hi limits, inclusive
 def clip(x, lo, hi):
     return max(lo, min(x, hi))
+
+def update(dist, obs):
+    dist_after_obs = {}
+    # obs_model_dict = {}
+    belief_dict = {}
+    new_tot = 0
+    for el in dist.support():
+        belief_dict[el] = dist.prob(el)
+        # obs_model_dict[el] = self.observation_model(el).prob(obs)
+        new_tot += belief_dict[el] * obs_dict[obs].prob(el)
+
+    for el in dist.support():
+        new_prob = belief_dict[el] * obs_dict[obs].prob(el) / new_tot
+        dist_after_obs[el] = new_prob
+
+    return DDist(dist_after_obs)
 
 ## Simple function to read the value of a channel from the MCP3008
 ## (channel is 0 to 7 inclusive as described in diagram above)
@@ -87,7 +106,7 @@ while True:
     print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
     print("Accelerometer Readings in X: ", accel_x, ", Y: ", accel_y, ", and Z: ", accel_z)
     print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
-    fv_belief = bayes_rules(fv_belief, buildObs, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
+    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
     print(fv_belief)
     print()
 
