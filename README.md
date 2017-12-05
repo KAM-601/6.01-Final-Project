@@ -8,9 +8,13 @@ For our final project, we would like to implement a control system for the lab r
 ## Setup
 
 1. Make sure you install the Adafruit_Python_GPIO Library:
-    `$ git clone https://github.com/adafruit/Adafruit_Python_GPIO.git
+    ```
+     $ git clone https://github.com/adafruit/Adafruit_Python_GPIO.git
      $ cd Adafruit_Python_GPIO
-     $ python3 setup.py install` 
+     $ python3 setup.py install
+2. Install the Adafruit Python LSM303 Library:
+    * Follow instructions at: https://github.com/adafruit/Adafruit_Python_LSM303
+
 
 ## Development Notes
 
@@ -38,3 +42,5 @@ SMBUS Library
 https://pypi.python.org/pypi/smbus-cffi/0.5.1
 CFFI
 https://pypi.python.org/pypi/cffi/
+Adafruit python LSM303 Library
+https://github.com/adafruit/Adafruit_Python_LSM303
