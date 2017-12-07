@@ -8,6 +8,7 @@ import spidev #import SPI library
 import Adafruit_LSM303
 import RPi.GPIO as GPIO
 from lib601.dist import *
+import socket
 
 RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
 FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
@@ -104,6 +105,67 @@ def mapping(val, lo, hi, mappedLo, mappedHi):
 def moveInstruction(voltage):
     pass
 
+
+
+
+# ---------------------------------------------------------
+# YOU CAN MODIFY BELOW THIS LINE, MAIN LOOP OF THE PROGRAM
+# ---------------------------------------------------------
+
+def loop(robot_data):
+
+    global fv_belief, rv_belief
+    
+    accel, mag = lsm303.read() # Grab the accel and mag data from sensor
+    accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
+    voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
+
+    #print("Voltage after flex sensor:", voltage, "Volts")
+    #print("Accelerometer Readings in Y: ", accel_y)
+    
+    fv = None
+    rv = None
+
+    # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
+    # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
+    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
+    fv_max_elt = fv_belief.max_prob_elt()
+    #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
+    if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
+        GPIO.output(18,GPIO.HIGH)
+        fv_belief = uniform_dist(fv_states)
+        fv = mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN)
+        #print("Sending an fv of:", fv, "m/s")
+
+    rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
+    rv_max_elt = rv_belief.max_prob_elt()
+    #print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
+    if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
+        GPIO.output(23,GPIO.HIGH)
+        rv_belief = uniform_dist(rv_states)
+        rv = mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX)
+        #print("Sending an rv of:", rv, "rad/s")
+
+    print()
+    time.sleep(.05)  #relax for .1 second before continuing
+    GPIO.output(23,GPIO.LOW)
+    GPIO.output(18,GPIO.LOW)
+    
+    if fv is None and rv is None:
+        return None
+    else:
+        return "fv: " + str(fv) + " " + "rv: " + str(rv)
+
+    ## General plan:
+    ## Read the flex sensor voltage, read the gyro sensor, develop confidence in
+    ## the configuration, and send it to the robotBrain
+
+
+
+
+
+
+
 # -----------------------------
 # SERVER CODE DO NOT TOUCH
 # -----------------------------
@@ -127,58 +189,22 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print("Connection to " + str(addr) + " initialized")
         with connection:
             while True:
-                data = connection.recv(1024)
-                data = data.decode('UTF-8')
-                
+                #data = connection.recv(1024)
+                #data = data.decode('UTF-8')
+                data = ''
                 ### MAIN LOOP OF THE PROGRAM
+                #print("Recieved " + data + " from the client")
+                
                 toRobot = loop(data)
+                
+                print(toRobot)
                 ###
 
                 if data == 'stop':
                     connection.close()
                     break
-                if toRobot != None:
+                if toRobot is not None:
                     connection.sendall(toRobot.encode())
         connection.close()
     print("Connection to " + str(addr) + " closed")
 
-
-# ---------------------------------------------------------
-# YOU CAN MODIFY BELOW THIS LINE, MAIN LOOP OF THE PROGRAM
-# ---------------------------------------------------------
-
-def loop(robot_data):
-
-    accel, mag = lsm303.read() # Grab the accel and mag data from sensor
-    accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
-    voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
-
-    print("Voltage after flex sensor:", voltage, "Volts")
-    print("Accelerometer Readings in Y: ", accel_y)
-
-    # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
-    # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
-    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
-    fv_max_elt = fv_belief.max_prob_elt()
-    print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
-    if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
-        #Send mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN) to robot?
-        GPIO.output(18,GPIO.HIGH)
-        fv_belief = uniform_dist(fv_states)
-
-    rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
-    rv_max_elt = rv_belief.max_prob_elt()
-    print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
-    if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
-        #Send mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX) to robot?
-        GPIO.output(23,GPIO.HIGH)
-        rv_belief = uniform_dist(rv_states)
-
-    print()
-    time.sleep(.02)  #relax for .1 second before continuing
-    GPIO.output(23,GPIO.LOW)
-    GPIO.output(18,GPIO.LOW)
-
-    ## General plan:
-    ## Read the flex sensor voltage, read the gyro sensor, develop confidence in
-    ## the configuration, and send it to the robotBrain
