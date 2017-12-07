@@ -5,7 +5,7 @@
 from soar.robot.pioneer import PioneerRobot
 import socket
 
-HOST = input('Please provide a host to connect to: ')
+HOST =  '18.111.2.126'#input('Please provide a host to connect to: ')
 PORT = 6010    # The same port as the server
 
 robot = PioneerRobot()
@@ -36,17 +36,20 @@ def on_start():
 
 def on_step(step_duration):
     #somewhere her I have to make sure dat is the latest data
-    data = s.recv(4096)
+    data = robot.s.recv(4096)
     data = data.decode('UTF-8')
-    data.split(' ')
+    data = data.split(' ')
+    print(data)
     if len(data) != 4:
-        return 
+        print("invalid: early return.")
+        return
     # Receives some instructions from gloveBrain.py
-    if data[1] is not 'None':
+    if data[1] != 'None':
         robot.fv = float(data[1])
-    if data[3] is not 'None':
+        print(robot.fv)
+    if data[3] != 'None':
         robot.rv = float(data[3])
-
+        print(robot.rv)
 def on_stop():
     pass
 
