@@ -10,57 +10,63 @@ from lib601.dist import *
 
 RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
 FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
+FV_MIN = -.5 # The min velocity we would like for the fv of the robot
 FV_MAX = .5 # The max velocity we would like for the robot
-FV_MIN = -.5 # The min velocity we would like for the robot
-MAX_Y = 1000
-MIN_Y = -1000
-RV_MAX = .5
-RV_MIN = -.5
-num_states = 25
+MIN_Y = -1000 # The min g reading we found on the accelerometer
+MAX_Y = 1000 # The max g reading we found on the accelerometer
+RV_MIN = -.5 # The min velocity we would like for the rv of the robot
+RV_MAX = .5 # The max velocity we would like for the rv of the robot
+num_states = 25 # The number of states we would like in our prob models
+CONFIDENCE_THRESHOLD = .95
 fv_states = [i for i in range(num_states)]
 rv_states = [i for i in range(num_states)]
+
+# Create initial uniform belief for the user's intended fv and rv
 fv_belief = uniform_dist(fv_states)
 rv_belief = uniform_dist(rv_states)
+
+# Initialize dicts to map states to voltages, and to store obs models in various states
+fv_dict = {}
+rv_dict = {}
 obs_dict = {}
 
-spi=spidev.SpiDev() #create an SPI device object
-spi.open(0,0) #tell it which select pin and SPI channel to use
-spi.max_speed_hz = 1953000 #Set SPI CLK frequency...don't change this...will only lead to heartache.
+spi=spidev.SpiDev() # Create an SPI device object
+spi.open(0,0) # Tell it which select pin and SPI channel to use
+spi.max_speed_hz = 1953000 # Set SPI CLK frequency...don't change this...
 
 # Create a LSM303 instance.
 lsm303 = Adafruit_LSM303.LSM303()
 
-def buildObs():
-    for i in range(num_states):
-        obs_dict[i] = mixture(triangle_dist(i, int(num_states/5), 0, num_states-1), uniform_dist(fv_states), .8)
 
-buildObs()
-
+# Function that will create our obs dicts and mapping dicts
 def initialize():
-    global fv_states, rv_states
     fv_step = (FLEXED_V - RELAXED_V)/num_states
     rv_step = (MAX_Y - MIN_Y)/num_states
     for i in range(num_states):
-        fv_states.append(round(RELAXED_V+fv_step*(1/2+i), 4))
-        rv_states.append(int(MIN_Y+rv_step*(1/2+i)))
+        fv_dict[i] = round(RELAXED_V+fv_step*(1/2+i), 4)
+        rv_dict[i] = int(MIN_Y+rv_step*(1/2+i))
+        if abs(i-(num_states-1)/2) >= 10:
+            obs_dict[i] = mixture(triangle_dist(i, int(num_states/12), 0, num_states-1), uniform_dist(fv_states), .8)
+        else:
+            obs_dict[i] = mixture(triangle_dist(i, int(num_states/5), 0, num_states-1), uniform_dist(fv_states), .8)
 
+initialize()
 
-# method to discretize values into boxes of size size
+# Method to discretize values into boxes of size "size"
 def discretize(value, size, max_bin=float('inf'), value_min = 0):
     return max(min(int((value - value_min)/size), max_bin), 0)
 
-#method to clip x to be within lo and hi limits, inclusive
+# Method to clip x to be within lo and hi limits, inclusive
 def clip(x, lo, hi):
     return max(lo, min(x, hi))
 
+# Function to update belief by Bayesian Reasoning
 def update(dist, obs):
     dist_after_obs = {}
-    # obs_model_dict = {}
     belief_dict = {}
     new_tot = 0
     for el in dist.support():
         belief_dict[el] = dist.prob(el)
-        # obs_model_dict[el] = self.observation_model(el).prob(obs)
         new_tot += belief_dict[el] * obs_dict[obs].prob(el)
 
     for el in dist.support():
@@ -69,9 +75,9 @@ def update(dist, obs):
 
     return DDist(dist_after_obs)
 
-## Simple function to read the value of a channel from the MCP3008
-## (channel is 0 to 7 inclusive as described in diagram above)
-## value comes back to you in volts from 0 to 3.3V
+# Simple function to read the value of a channel from the MCP3008
+# (channel is 0 to 7 inclusive as described in diagram above)
+# value comes back to you in volts from 0 to 3.3V
 def readValue(channel):
     adc = spi.xfer2([1,(8+channel)<<4,0])
     data = ((adc[1]&3)<<8)+adc[2]
@@ -92,24 +98,32 @@ def mapping(val, lo, hi, mappedLo, mappedHi):
 def moveInstruction(voltage):
     pass
 
-def confidentConfig():
-    pass
-
 while True:
 
-    accel, mag = lsm303.read()
-    # Grab the X, Y, Z components from the reading and print them out.
-    accel_x, accel_y, accel_z = accel
-
+    accel, mag = lsm303.read() # Grab the accel and mag data from sensor
+    accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
     voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
-    print("Voltage after flex sensor:", voltage, "Volts")
-    print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
-    print("Accelerometer Readings in X: ", accel_x, ", Y: ", accel_y, ", and Z: ", accel_z)
-    print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
-    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
-    print(fv_belief)
-    print()
 
+    print("Voltage after flex sensor:", voltage, "Volts")
+    print("Accelerometer Readings in Y: ", accel_y)
+
+    # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
+    # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
+    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
+    fv_max_elt = fv_belief.max_prob_elt()
+    print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
+    if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
+        #Send mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN) to robot?
+        fv_belief = uniform_dist(fv_states)
+
+    rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
+    rv_max_elt = rv_belief.max_prob_elt()
+    print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
+    if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
+        #Send mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX) to robot?
+        rv_belief = uniform_dist(rv_states)
+
+    print()
     time.sleep(.1)  #relax for 1 second before continuing
 
     ## General plan:
