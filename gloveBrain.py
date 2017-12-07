@@ -104,7 +104,50 @@ def mapping(val, lo, hi, mappedLo, mappedHi):
 def moveInstruction(voltage):
     pass
 
-while True:
+# -----------------------------
+# SERVER CODE DO NOT TOUCH
+# -----------------------------
+def get_ip_address():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # we don't actually care about connecting to the google DNS, instead we are using the
+    s.connect(("8.8.8.8", 80))
+    # garbage collector to remove our socket on return
+    return s.getsockname()[0]
+
+HOSTNAME = get_ip_address()
+PORT = 6010
+
+# create the server socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.bind((HOSTNAME, PORT))
+    s.listen(1)
+    print("Now Listening on: " + str(HOSTNAME) + ":" + str(PORT))
+    while True:
+        connection, addr = s.accept()
+        print("Connection to " + str(addr) + " initialized")
+        with connection:
+            while True:
+                data = connection.recv(1024)
+                data = data.decode('UTF-8')
+                
+                ### MAIN LOOP OF THE PROGRAM
+                toRobot = loop(data)
+                ###
+
+                if data == 'stop':
+                    connection.close()
+                    break
+                if toRobot != None:
+                    connection.sendall(toRobot.encode())
+        connection.close()
+    print("Connection to " + str(addr) + " closed")
+
+
+# ---------------------------------------------------------
+# YOU CAN MODIFY BELOW THIS LINE, MAIN LOOP OF THE PROGRAM
+# ---------------------------------------------------------
+
+def loop(robot_data):
 
     accel, mag = lsm303.read() # Grab the accel and mag data from sensor
     accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
