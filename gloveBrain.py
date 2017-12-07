@@ -18,7 +18,7 @@ MIN_Y = -1000 # The min g reading we found on the accelerometer
 MAX_Y = 1000 # The max g reading we found on the accelerometer
 RV_MIN = -.5 # The min velocity we would like for the rv of the robot
 RV_MAX = .5 # The max velocity we would like for the rv of the robot
-num_states = 25 # The number of states we would like in our prob models
+num_states = 7 # The number of states we would like in our prob models
 CONFIDENCE_THRESHOLD = .95
 fv_states = [i for i in range(num_states)]
 rv_states = [i for i in range(num_states)]
@@ -52,10 +52,8 @@ def initialize():
     for i in range(num_states):
         fv_dict[i] = round(RELAXED_V+fv_step*(1/2+i), 4)
         rv_dict[i] = int(MIN_Y+rv_step*(1/2+i))
-        if abs(i-(num_states-1)/2) >= 10:
-            obs_dict[i] = mixture(triangle_dist(i, int(num_states/12), 0, num_states-1), uniform_dist(fv_states), .8)
-        else:
-            obs_dict[i] = mixture(triangle_dist(i, int(num_states/5), 0, num_states-1), uniform_dist(fv_states), .8)
+        obs_dict[i] = mixture(delta_dist(i), uniform_dist(fv_states), .8)
+    
 
 initialize()
 
