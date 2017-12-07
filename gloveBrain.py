@@ -6,6 +6,7 @@
 import time
 import spidev #import SPI library
 import Adafruit_LSM303
+import RPi.GPIO as GPIO
 from lib601.dist import *
 
 RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
@@ -36,6 +37,11 @@ spi.max_speed_hz = 1953000 # Set SPI CLK frequency...don't change this...
 
 # Create a LSM303 instance.
 lsm303 = Adafruit_LSM303.LSM303()
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(18,GPIO.OUT)
+GPIO.setup(23,GPIO.OUT)
 
 
 # Function that will create our obs dicts and mapping dicts
@@ -114,6 +120,7 @@ while True:
     print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
     if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
         #Send mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN) to robot?
+        GPIO.output(18,GPIO.HIGH)
         fv_belief = uniform_dist(fv_states)
 
     rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
@@ -121,10 +128,13 @@ while True:
     print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
     if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
         #Send mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX) to robot?
+        GPIO.output(23,GPIO.HIGH)
         rv_belief = uniform_dist(rv_states)
 
     print()
-    time.sleep(.1)  #relax for 1 second before continuing
+    time.sleep(.02)  #relax for .1 second before continuing
+    GPIO.output(23,GPIO.LOW)
+    GPIO.output(18,GPIO.LOW)
 
     ## General plan:
     ## Read the flex sensor voltage, read the gyro sensor, develop confidence in
