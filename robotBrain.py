@@ -4,8 +4,17 @@
 ## and feed them to the robot's motors.
 from soar.robot.pioneer import PioneerRobot
 import socket
+import http.client
 
-HOST =  '18.111.2.126'#input('Please provide a host to connect to: ')
+
+# --------------------------------
+# GET IP ADDRESS FROM COMMON POINT
+# --------------------------------
+h1 = http.client.HTTPConnection('next205.mit.edu')
+h1.request('GET', '/glove')
+res = h1.getresponse()
+HOST = res.read().decode('UTF-8')
+
 PORT = 6010    # The same port as the server
 
 robot = PioneerRobot()

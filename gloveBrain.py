@@ -106,9 +106,9 @@ def moveInstruction(voltage):
 
 
 
-# ---------------------------------------------------------
-# YOU CAN MODIFY BELOW THIS LINE, MAIN LOOP OF THE PROGRAM
-# ---------------------------------------------------------
+# ------------------------
+# MAIN LOOP OF THE PROGRAM
+# ------------------------
 
 def loop(robot_data):
 
@@ -160,13 +160,10 @@ def loop(robot_data):
 
 
 
-
-
-
-
 # -----------------------------
 # SERVER CODE DO NOT TOUCH
 # -----------------------------
+
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # we don't actually care about connecting to the google DNS, instead we are using the
@@ -174,35 +171,80 @@ def get_ip_address():
     # garbage collector to remove our socket on return
     return s.getsockname()[0]
 
+# --------------------------------
+# SEND IP ADDRESS TO COMMON POINT AND WAIT FOR INTERNET CONNECTION
+# --------------------------------
+def send_ip_address(External_Host, Current_IP):
+    print("Now sending IP to common point.")
+    h1 = http.client.HTTPConnection(External_Host)
+    h1.request('POST', '/glove?newIP="' + Current_IP + '"')
+    res = h1.getresponse()
+
+    response_status = res.status
+    response_recieved = res.read().decode('UTF-8')
+
+    if (response_status == 200 and response_recieved == 'success'):
+        return
+    else:
+        raise Exception('Failed to update the common point')
+
 HOSTNAME = get_ip_address()
 PORT = 6010
 
-# create the server socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOSTNAME, PORT))
-    s.listen(1)
-    print("Now Listening on: " + str(HOSTNAME) + ":" + str(PORT))
+# ONCE HOSTNAME IS AVAILABLE, WE NEED TO SEND IT TO THE COMMON SERVER
+
+
+def ServeLoop():
+    
+    # Make sure we are on the network
+    # wait for internet connection and 
+    
     while True:
-        connection, addr = s.accept()
-        print("Connection to " + str(addr) + " initialized")
-        with connection:
+        try:
+            HOSTNAME = get_ip_address()
+            send_ip_address('next205.mit.edu', HOSTNAME)
+            break
+        except:
+            print('Failed to connect to the network, starting again in 1 second')
+            time.sleep(1)
+            pass
+
+
+    try:
+        # create the server socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOSTNAME, PORT))
+            s.listen(1)
+            print("Now Listening on: " + str(HOSTNAME) + ":" + str(PORT))
             while True:
-                #data = connection.recv(1024)
-                #data = data.decode('UTF-8')
-                data = ''
-                ### MAIN LOOP OF THE PROGRAM
-                #print("Recieved " + data + " from the client")
-                
-                toRobot = loop(data)
-                
-                print(toRobot)
-                ###
+                connection, addr = s.accept()
+                print("Connection to " + str(addr) + " initialized")
+                with connection:
+                    while True:
+                        #data = connection.recv(1024)
+                        #data = data.decode('UTF-8')
+                        data = ''
+                        ### MAIN LOOP OF THE PROGRAM
 
-                if data == 'stop':
-                    connection.close()
-                    break
-                if toRobot is not None:
-                    connection.sendall(toRobot.encode())
-        connection.close()
-    print("Connection to " + str(addr) + " closed")
+                        toRobot = loop(data)
+                        print(toRobot)
 
+                        if data == 'stop':
+                            connection.close()
+                            break
+                        if toRobot is not None:
+                            connection.sendall(toRobot.encode())
+                connection.close()
+            print("Connection to " + str(addr) + " closed")
+    except:
+        print('Error with socket connection, Waiting for a new connection')    
+
+    return True
+
+# This is the secret loop that is actually doing everything
+
+serve = True
+
+while serve:
+    serve = ServeLoop()
+    time.sleep(3)
