@@ -188,6 +188,26 @@ def send_ip_address(External_Host, Current_IP):
     else:
         raise Exception('Failed to update the common point')
 
+def beginConnection(sock):
+    connection, addr = sock.accept()
+    print("Connection to " + str(addr) + " initialized")
+    with connection:
+        while True:
+            #data = connection.recv(1024)
+            #data = data.decode('UTF-8')
+            data = ''
+            ### MAIN LOOP OF THE PROGRAM
+
+            toRobot = loop(data)
+            print(toRobot)
+
+            if data == 'stop':
+                connection.close()
+                break
+            if toRobot is not None:
+                connection.sendall(toRobot.encode())
+    connection.close()
+
 HOSTNAME = get_ip_address()
 PORT = 6010
 
@@ -217,25 +237,8 @@ def ServeLoop():
             s.listen(1)
             print("Now Listening on: " + str(HOSTNAME) + ":" + str(PORT))
             while True:
-                connection, addr = s.accept()
-                print("Connection to " + str(addr) + " initialized")
-                with connection:
-                    while True:
-                        #data = connection.recv(1024)
-                        #data = data.decode('UTF-8')
-                        data = ''
-                        ### MAIN LOOP OF THE PROGRAM
-
-                        toRobot = loop(data)
-                        print(toRobot)
-
-                        if data == 'stop':
-                            connection.close()
-                            break
-                        if toRobot is not None:
-                            connection.sendall(toRobot.encode())
-                connection.close()
-            print("Connection to " + str(addr) + " closed")
+                beginConnection(s)
+                print("Connection to " + str(addr) + " closed")
     except:
         print('Error with socket connection, Waiting for a new connection')    
 
