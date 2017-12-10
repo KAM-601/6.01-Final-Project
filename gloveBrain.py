@@ -9,6 +9,7 @@ import Adafruit_LSM303
 import RPi.GPIO as GPIO
 from lib601.dist import *
 import socket
+import http.client
 
 RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
 FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
@@ -182,7 +183,7 @@ def send_ip_address(External_Host, Current_IP):
 
     response_status = res.status
     response_recieved = res.read().decode('UTF-8')
-
+    print(str(response_status) + ":" + response_recieved)
     if (response_status == 200 and response_recieved == 'success'):
         return
     else:
@@ -208,7 +209,7 @@ def beginConnection(sock):
                 connection.sendall(toRobot.encode())
     connection.close()
 
-HOSTNAME = get_ip_address()
+HOSTNAME = ""
 PORT = 6010
 
 # ONCE HOSTNAME IS AVAILABLE, WE NEED TO SEND IT TO THE COMMON SERVER
@@ -222,10 +223,13 @@ def ServeLoop():
     while True:
         try:
             HOSTNAME = get_ip_address()
+            print("Hostname detected: " + HOSTNAME)
             send_ip_address('next205.mit.edu', HOSTNAME)
+            print("Common point updated")
             break
-        except:
-            print('Failed to connect to the network, starting again in 1 second')
+        except Exception as e:
+            print('Failed to connect to the network, starting again in 1 second:')
+            print(str(e))
             time.sleep(1)
             pass
 
