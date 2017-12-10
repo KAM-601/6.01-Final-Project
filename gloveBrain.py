@@ -28,6 +28,12 @@ rv_states = [i for i in range(num_states)]
 fv_belief = uniform_dist(fv_states)
 rv_belief = uniform_dist(rv_states)
 
+#create traj for recording the reversing actions, lastv to store the last command,
+#and reversing to indicate whether it is doing the reverse motion
+traj = []
+lastv = ()
+reversing = False
+
 # Initialize dicts to map states to voltages, and to store obs models in various states
 fv_dict = {}
 rv_dict = {}
@@ -113,47 +119,71 @@ def moveInstruction(voltage):
 
 def loop(robot_data):
 
-    global fv_belief, rv_belief
+    global fv_belief, rv_belief,traj,reversing,lastv
     
     accel, mag = lsm303.read() # Grab the accel and mag data from sensor
     accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
-    voltage = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
+    voltage0 = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
+    #voltage1 = readValue(1)  # Read voltage on channel 0 of ADC (pin 1)
+    voltage1 = FLEXED_V
+    threshold1 = (FLEXED_V + RELAXED_V)/2
+    recording = (voltage1>threshold1)
+    if ((not recording) and (not reversing) and len(traj)>0):
+        reversing = True
+    if reversing:
+        if len(traj) == 0:
+            reversing = False
+        else:
+            (lastfv,lastrv) = traj.pop()
+            lastfv = -lastfv if (lastv is not None) else None
+            lastrv = -lastrv if (lasrv is not None) else None
+            time.sleep(.05)
+            if (fv is None and rv is None):
+                return None
+            else:
+                return "fv: " + str(lastfv) + " " + "rv: " + str(lastrv)
 
-    #print("Voltage after flex sensor:", voltage, "Volts")
-    #print("Accelerometer Readings in Y: ", accel_y)
-    
-    fv = None
-    rv = None
+    if not reversing:
 
-    # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
-    # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
-    fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
-    fv_max_elt = fv_belief.max_prob_elt()
-    #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
-    if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
-        GPIO.output(18,GPIO.HIGH)
-        fv_belief = uniform_dist(fv_states)
-        fv = mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN)
-        #print("Sending an fv of:", fv, "m/s")
+        #print("Voltage after flex sensor:", voltage, "Volts")
+        #print("Accelerometer Readings in Y: ", accel_y)
 
-    rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
-    rv_max_elt = rv_belief.max_prob_elt()
-    #print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
-    if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
-        GPIO.output(23,GPIO.HIGH)
-        rv_belief = uniform_dist(rv_states)
-        rv = mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX)
-        #print("Sending an rv of:", rv, "rad/s")
+        fv = None
+        rv = None
 
-    print()
-    time.sleep(.05)  #relax for .1 second before continuing
-    GPIO.output(23,GPIO.LOW)
-    GPIO.output(18,GPIO.LOW)
-    
-    if fv is None and rv is None:
-        return None
-    else:
-        return "fv: " + str(fv) + " " + "rv: " + str(rv)
+        # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
+        # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
+        fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
+        fv_max_elt = fv_belief.max_prob_elt()
+        #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
+        if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
+            GPIO.output(18,GPIO.HIGH)
+            fv_belief = uniform_dist(fv_states)
+            fv = mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN)
+            #print("Sending an fv of:", fv, "m/s")
+
+        rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
+        rv_max_elt = rv_belief.max_prob_elt()
+        #print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
+        if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
+            GPIO.output(23,GPIO.HIGH)
+            rv_belief = uniform_dist(rv_states)
+            rv = mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX)
+            #print("Sending an rv of:", rv, "rad/s")
+
+        print()
+        time.sleep(.05)  #relax for .1 second before continuing
+        GPIO.output(23,GPIO.LOW)
+        GPIO.output(18,GPIO.LOW)
+        if (fv, rv) == lastv:
+            (fv,rv) = (None,None)
+        if recording:
+            traj.append((fv,rv))
+        if (fv is None and rv is None):
+            return None
+        else:
+            lastv = (fv,rv)
+            return "fv: " + str(fv) + " " + "rv: " + str(rv)
 
     ## General plan:
     ## Read the flex sensor voltage, read the gyro sensor, develop confidence in
