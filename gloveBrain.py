@@ -31,7 +31,7 @@ rv_belief = uniform_dist(rv_states)
 #create traj for recording the reversing actions, lastv to store the last command,
 #and reversing to indicate whether it is doing the reverse motion
 traj = []
-lastv = ()
+lastv = (0,0)
 reversing = False
 
 # Initialize dicts to map states to voltages, and to store obs models in various states
@@ -124,36 +124,37 @@ def loop(robot_data):
     accel, mag = lsm303.read() # Grab the accel and mag data from sensor
     accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
     voltage0 = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
-    #voltage1 = readValue(1)  # Read voltage on channel 0 of ADC (pin 1)
-    voltage1 = FLEXED_V
-    threshold1 = (FLEXED_V + RELAXED_V)/2
+    voltage1 = readValue(1)  # Read voltage on channel 0 of ADC (pin 1)
+    threshold1 = 1.75
     recording = (voltage1>threshold1)
-    if ((not recording) and (not reversing) and len(traj)>0):
+    if ((not recording) and (not reversing) and (len(traj)>0)):
+        print("relaxed")
         reversing = True
     if reversing:
         if len(traj) == 0:
             reversing = False
         else:
+            print("reversing")
             (lastfv,lastrv) = traj.pop()
-            lastfv = -lastfv if (lastv is not None) else None
-            lastrv = -lastrv if (lasrv is not None) else None
+            lastfv = -lastfv if (lastfv is not None) else None
+            lastrv = -lastrv if (lastrv is not None) else None
             time.sleep(.05)
-            if (fv is None and rv is None):
+            if (lastfv is None and lastrv is None):
                 return None
             else:
-                return "fv: " + str(lastfv) + " " + "rv: " + str(lastrv)
+                return "lastfv: " + str(lastfv) + " " + "lastrv: " + str(lastrv)
 
     if not reversing:
 
-        #print("Voltage after flex sensor:", voltage, "Volts")
+        #print("Voltage after flex sensor:", voltage0, "Volts")
         #print("Accelerometer Readings in Y: ", accel_y)
 
-        fv = None
-        rv = None
+        fv = lastv[0]
+        rv = lastv[1]
 
-        # print("Corresponds to a FV of:", mapping(voltage, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
+        # print("Corresponds to a FV of:", mapping(voltage0, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
         # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
-        fv_belief = update(fv_belief, discretize(voltage, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
+        fv_belief = update(fv_belief, discretize(voltage0, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
         fv_max_elt = fv_belief.max_prob_elt()
         #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
         if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
@@ -175,10 +176,14 @@ def loop(robot_data):
         time.sleep(.05)  #relax for .1 second before continuing
         GPIO.output(23,GPIO.LOW)
         GPIO.output(18,GPIO.LOW)
+        
         if (fv, rv) == lastv:
             (fv,rv) = (None,None)
+
         if recording:
+            print("traj appending")
             traj.append((fv,rv))
+
         if (fv is None and rv is None):
             return None
         else:
@@ -273,9 +278,9 @@ def ServeLoop():
             while True:
                 beginConnection(s)
                 print("Connection to " + str(addr) + " closed")
-    except:
+    except Exception as e:
         print('Error with socket connection, Waiting for a new connection')    
-
+        print(str(e))
     return True
 
 # This is the secret loop that is actually doing everything
