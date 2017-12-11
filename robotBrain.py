@@ -13,27 +13,12 @@ import http.client
 h1 = http.client.HTTPConnection('next205.mit.edu')
 h1.request('GET', '/glove')
 res = h1.getresponse()
-HOST = res.read().decode('UTF-8')
+HOST = res.read().decode('UTF-8').strip('"')
 
 PORT = 6010    # The same port as the server
 
 robot = PioneerRobot()
 robot.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-##def loop(data):
-##  return None
-##
-##  while True:
-##    data = s.recv(1024)
-##    data = data.decode('UTF-8')
-##
-##    ### RUN THE MAIN LOOP OF THE RECIEVER
-##    print(data)
-##    sendData = loop(data)
-##
-##    if sendData != None:
-##      s.sendall(sendData.encode('UTF-8'))
-
 
 def on_load():  
     pass
