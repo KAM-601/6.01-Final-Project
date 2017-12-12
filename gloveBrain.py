@@ -11,6 +11,13 @@ from lib601.dist import *
 import socket
 import http.client
 
+#-----------------------------------
+# CHANGE FOR DIFFERENT EXTERNAL HOST
+#-----------------------------------
+COMMON_SERVER = "next205.mit.edu"
+
+
+
 RELAXED_V = 1.65 # The voltage we found when the flex sensor was fully relaxed
 FLEXED_V = 2.3  # The voltage we found when the flex sensor was fully flexed
 FV_MIN = -.75 # The min velocity we would like for the fv of the robot
@@ -257,7 +264,7 @@ def ServeLoop():
         try:
             HOSTNAME = get_ip_address()
             print("Hostname detected: " + HOSTNAME)
-            send_ip_address('next205.mit.edu', HOSTNAME)
+            send_ip_address(COMMON_SERVER, HOSTNAME)
             print("Common point updated")
             break
         except Exception as e:

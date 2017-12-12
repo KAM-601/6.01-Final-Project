@@ -4,11 +4,15 @@ import http.client
 PORT = 6010    # The same port as the server
 
 
+#-----------------------------------
+# CHANGE FOR DIFFERENT EXTERNAL HOST
+#-----------------------------------
+COMMON_SERVER = "next205.mit.edu"
 
 # --------------------------------
 # GET IP ADDRESS FROM COMMON POINT
 # --------------------------------
-h1 = http.client.HTTPConnection('next205.mit.edu')
+h1 = http.client.HTTPConnection(COMMON_SERVER)
 h1.request('GET', '/glove')
 res = h1.getresponse();
 HOST = res.read().decode('UTF-8').strip('"')

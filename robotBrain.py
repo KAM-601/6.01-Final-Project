@@ -6,6 +6,15 @@ from soar.robot.pioneer import PioneerRobot
 import socket
 import http.client
 
+
+#-----------------------------------
+# CHANGE FOR DIFFERENT EXTERNAL HOST
+#-----------------------------------
+COMMON_SERVER = "next205.mit.edu"
+
+
+
+
 robot = PioneerRobot()
 robot.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -16,7 +25,7 @@ def on_start():
     # --------------------------------
     # GET IP ADDRESS FROM COMMON POINT
     # --------------------------------
-    h1 = http.client.HTTPConnection('next205.mit.edu')
+    h1 = http.client.HTTPConnection(COMMON_SERVER)
     h1.request('GET', '/glove')
     res = h1.getresponse()
     HOST = res.read().decode('UTF-8').strip('"')
