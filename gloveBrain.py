@@ -4,10 +4,10 @@
 ## make robot motion decisions, and send to the robot.
 
 import time
-import spidev #import SPI library
-import Adafruit_LSM303
-import RPi.GPIO as GPIO
-from lib601.dist import *
+import spidev # SPI library
+import Adafruit_LSM303 # Library used to read from 9-DOF IMU (Accelerometer)
+import RPi.GPIO as GPIO # Library to operate LED's
+from lib601.dist import * # Library to handle probabilistic reasoning
 import socket
 import http.client
 
@@ -20,11 +20,11 @@ MAX_Y = 1000 # The max g reading we found on the accelerometer
 RV_MIN = -1 # The min velocity we would like for the rv of the robot
 RV_MAX = 1 # The max velocity we would like for the rv of the robot
 num_states = 7 # The number of states we would like in our prob models
-CONFIDENCE_THRESHOLD = .95
-fv_states = [i for i in range(num_states)]
-rv_states = [i for i in range(num_states)]
+CONFIDENCE_THRESHOLD = .95 # The threshold we consider good enough to be confident in a configuration
 
 # Create initial uniform belief for the user's intended fv and rv
+fv_states = [i for i in range(num_states)]
+rv_states = [i for i in range(num_states)]
 fv_belief = uniform_dist(fv_states)
 rv_belief = uniform_dist(rv_states)
 
@@ -46,6 +46,7 @@ spi.max_speed_hz = 1953000 # Set SPI CLK frequency...don't change this...
 # Create a LSM303 instance.
 lsm303 = Adafruit_LSM303.LSM303()
 
+# Initialize LED pins
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(18,GPIO.OUT)
@@ -60,17 +61,13 @@ def initialize():
         fv_dict[i] = round(RELAXED_V+fv_step*(1/2+i), 4)
         rv_dict[i] = int(MIN_Y+rv_step*(1/2+i))
         obs_dict[i] = mixture(delta_dist(i), uniform_dist(fv_states), .8)
-    
+
 
 initialize()
 
 # Method to discretize values into boxes of size "size"
 def discretize(value, size, max_bin=float('inf'), value_min = 0):
     return max(min(int((value - value_min)/size), max_bin), 0)
-
-# Method to clip x to be within lo and hi limits, inclusive
-def clip(x, lo, hi):
-    return max(lo, min(x, hi))
 
 # Function to update belief by Bayesian Reasoning
 def update(dist, obs):
@@ -119,13 +116,14 @@ def moveInstruction(voltage):
 def loop(robot_data):
 
     global fv_belief, rv_belief,traj,reversing,lastv
-    
+
     accel, mag = lsm303.read() # Grab the accel and mag data from sensor
     accel_x, accel_y, accel_z = accel # Split accel data into x,y,z
     voltage0 = readValue(0) # Read voltage on channel 0 of ADC (pin 1)
     voltage1 = readValue(1)  # Read voltage on channel 0 of ADC (pin 1)
-    threshold1 = 1.75
-    recording = (voltage1>threshold1)
+    record_threshold = 1.75 # Threshold in volts to begin recording
+    recording = (voltage1>record_threshold)
+
     if ((not recording) and (not reversing) and (len(traj)>0)):
         print("relaxed")
         time.sleep(1)
@@ -173,7 +171,7 @@ def loop(robot_data):
         print()
         time.sleep(.05)  #relax for .1 second before continuing
         GPIO.output(18,GPIO.LOW)
-        
+
         if (fv, rv) == lastv:
             (fv,rv) = (None,None)
 
@@ -249,10 +247,10 @@ PORT = 6010
 
 
 def ServeLoop():
-    
+
     # Make sure we are on the network
-    # wait for internet connection and 
-    
+    # wait for internet connection and
+
     while True:
         try:
             HOSTNAME = get_ip_address()
@@ -278,7 +276,7 @@ def ServeLoop():
                 beginConnection(s)
                 print("Connection to " + str(addr) + " closed")
     except Exception as e:
-        print('Error with socket connection, Waiting for a new connection')    
+        print('Error with socket connection, Waiting for a new connection')
         print(str(e))
     return True
 
