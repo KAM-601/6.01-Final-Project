@@ -1,7 +1,6 @@
 ## 6.01 Final Project
 ## Team KAM - Kevin Mao, Angel Alvarez, Matt Farejowicz
-## This will be the software that will run on the Robot to receive instructions
-## and feed them to the robot's motors.
+## This will be the software that will run on the Robot to receive instructions and feed them to the robot's motors.
 from soar.robot.pioneer import PioneerRobot
 import socket
 import http.client
@@ -29,14 +28,13 @@ def on_start():
     h1.request('GET', '/glove')
     res = h1.getresponse()
     HOST = res.read().decode('UTF-8').strip('"')
-
-    PORT = 6010    # The same port as the server
+    PORT = 6010  # The same port as the server
     
     robot.s.connect((HOST, PORT))
     robot.s.sendall(b'ready')
   
 def on_step(step_duration):
-    #somewhere her I have to make sure dat is the latest data
+    #BUG: Somewhere here I have to retrieve the data in a non-blocking way.
     data = robot.s.recv(4096)
     if not data: on_stop()
     print(len(data))

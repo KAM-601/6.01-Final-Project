@@ -59,9 +59,8 @@ GPIO.setwarnings(False)
 GPIO.setup(18,GPIO.OUT)
 GPIO.setup(23,GPIO.OUT)
 
-
-# Function that will create our obs dicts and mapping dicts
 def initialize():
+    ''' Function that will create our obs dicts and mapping dicts '''
     fv_step = (FLEXED_V - RELAXED_V)/num_states
     rv_step = (MAX_Y - MIN_Y)/num_states
     for i in range(num_states):
@@ -69,15 +68,14 @@ def initialize():
         rv_dict[i] = int(MIN_Y+rv_step*(1/2+i))
         obs_dict[i] = mixture(delta_dist(i), uniform_dist(fv_states), .8)
 
-
 initialize()
 
-# Method to discretize values into boxes of size "size"
 def discretize(value, size, max_bin=float('inf'), value_min = 0):
+    ''' Discretize values into boxes of size "size" '''
     return max(min(int((value - value_min)/size), max_bin), 0)
 
-# Function to update belief by Bayesian Reasoning
 def update(dist, obs):
+    ''' Update belief by Bayesian Reasoning. '''
     dist_after_obs = {}
     belief_dict = {}
     new_tot = 0
@@ -91,36 +89,36 @@ def update(dist, obs):
 
     return DDist(dist_after_obs)
 
-# Simple function to read the value of a channel from the MCP3008
-# (channel is 0 to 7 inclusive as described in diagram above)
-# value comes back to you in volts from 0 to 3.3V
 def readValue(channel):
+    '''Simple function to read the value of a channel from the MCP3008
+    (channel is 0 to 7 inclusive as described in diagram above)
+    value comes back to you in volts from 0 to 3.3V'''
     adc = spi.xfer2([1,(8+channel)<<4,0])
     data = ((adc[1]&3)<<8)+adc[2]
     return 3.3*data/1023 #scale 10 bit ADC to 0 to 3.3V reading
 
-## Need to measure a voltage greater than 3.3V?  Or less than 0V?
-## Too bad! You'll have to shift it...you can do that using op amps!
-
-# Function that takes a value and range and maps that value to a value in
-# a different range
 def mapping(val, lo, hi, mappedLo, mappedHi):
+    ''' Function that takes a value and range and maps that value to a value in a different range '''
     if val > hi:
         return mappedHi
     if val < lo:
         return mappedLo # First sees if function needs to clip
     return (val - lo) / (hi - lo) * (mappedHi - mappedLo) + mappedLo #Otherwise return mapping
 
-def moveInstruction(voltage):
-    pass
-
-
-
 # ------------------------
 # MAIN LOOP OF THE PROGRAM
 # ------------------------
 
 def loop(robot_data):
+    ''' Function that is called by the network code. 
+        Will be called synchronously as long as the robot is connected.
+        
+        PARAMS: robot_data - data sent back by the robot, currently, we don't actually get this data,
+        because it would stall the server.
+
+        RETURNS: a String to be sent to the robot OR None
+    '''
+
 
     global fv_belief, rv_belief,traj,reversing,lastv
 
@@ -154,95 +152,85 @@ def loop(robot_data):
         #print("Voltage after flex sensor:", voltage0, "Volts")
         #print("Accelerometer Readings in Y: ", accel_y)
 
-        fv = lastv[0]
-        rv = lastv[1]
+        fv = lastv[0]   # last known readings of fv
+        rv = lastv[1]   # last known readings of rv
 
         # print("Corresponds to a FV of:", mapping(voltage0, RELAXED_V, FLEXED_V, FV_MAX, FV_MIN), "m/s")
         # print("Corresponds to a RV of:", mapping(accel_y, MIN_Y, MAX_Y, RV_MIN, RV_MAX), "r/s")
+        
         fv_belief = update(fv_belief, discretize(voltage0, (FLEXED_V-RELAXED_V)/num_states, num_states-1, RELAXED_V))
         fv_max_elt = fv_belief.max_prob_elt()
+        
         #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
+        
         if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
             fv_belief = uniform_dist(fv_states)
             fv = mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN)
-            #print("Sending an fv of:", fv, "m/s")
-
+            
         rv_belief = update(rv_belief, discretize(accel_y, (MAX_Y-MIN_Y)/num_states, num_states-1, MIN_Y))
         rv_max_elt = rv_belief.max_prob_elt()
+        
         #print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
+        
         if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
             rv_belief = uniform_dist(rv_states)
             rv = mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX)
-            #print("Sending an rv of:", rv, "rad/s")
-
-        print()
-        time.sleep(.05)  #relax for .1 second before continuing
+            
+        time.sleep(.05)
         GPIO.output(18,GPIO.LOW)
 
-        if (fv, rv) == lastv:
+        if (fv, rv) == lastv:        # if we haven't updated fv or rv, then send no data
             (fv,rv) = (None,None)
 
         if recording:
             print("traj appending")
             traj.append((fv,rv))
 
-        if (fv is None and rv is None):
+        if (fv is None and rv is None):  
             return None
         else:
             lastv = (fv,rv)
             GPIO.output(18,GPIO.HIGH)
             return "fv: " + str(fv) + " " + "rv: " + str(rv)
 
-    ## General plan:
-    ## Read the flex sensor voltage, read the gyro sensor, develop confidence in
-    ## the configuration, and send it to the robotBrain
-
-
-
-# -----------------------------
+# ------------------------
 # SERVER CODE DO NOT TOUCH
-# -----------------------------
+# ------------------------
 
 def get_ip_address():
+    ''' Get the outward facing IP address '''
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # we don't actually care about connecting to the google DNS, instead we are using the
+    
+    # we don't actually care about connecting to the google DNS, instead we are pulling off the IP from the socket name
     s.connect(("8.8.8.8", 80))
-    # garbage collector to remove our socket on return
+    
+    # exploit garbage collector to remove our socket on return
     return s.getsockname()[0]
 
-# --------------------------------
-# SEND IP ADDRESS TO COMMON POINT AND WAIT FOR INTERNET CONNECTION
-# --------------------------------
 def send_ip_address(External_Host, Current_IP):
-    print("Now sending IP to common point.")
+    ''' Sends IP to the common external host. '''
+
     h1 = http.client.HTTPConnection(External_Host)
     h1.request('POST', '/glove?newIP="' + Current_IP + '"')
     res = h1.getresponse()
 
     response_status = res.status
     response_recieved = res.read().decode('UTF-8')
-    print(str(response_status) + ":" + response_recieved)
     if (response_status == 200 and response_recieved == 'success'):
         return
     else:
         raise Exception('Failed to update the common point')
 
 def beginConnection(sock):
+    ''' create a connection with a listening socket. This is considered the main loop of the program. '''
+
     connection, addr = sock.accept()
     print("Connection to " + str(addr) + " initialized")
     with connection:
         while True:
-            #data = connection.recv(1024)
-            #data = data.decode('UTF-8')
-            data = ''
-            ### MAIN LOOP OF THE PROGRAM
-
-            toRobot = loop(data)
+            toRobot = loop('')
             print(toRobot)
 
-            if data == 'stop':
-                connection.close()
-                break
             if toRobot is not None:
                 connection.sendall(toRobot.encode())
     connection.close()
@@ -250,13 +238,9 @@ def beginConnection(sock):
 HOSTNAME = ""
 PORT = 6010
 
-# ONCE HOSTNAME IS AVAILABLE, WE NEED TO SEND IT TO THE COMMON SERVER
-
-
 def ServeLoop():
-
-    # Make sure we are on the network
-    # wait for internet connection and
+    ''' Performs error handling of network code '''
+    # Wait until we are on the network, and successfully shared IP with common point
 
     while True:
         try:
@@ -271,9 +255,9 @@ def ServeLoop():
             time.sleep(1)
             pass
 
+    # create the server socket
 
     try:
-        # create the server socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((HOSTNAME, PORT))
             s.listen(1)
