@@ -11,14 +11,14 @@ from lib601.dist import *
 import socket
 import http.client
 
-RELAXED_V = 1.55 # The voltage we found when the flex sensor was fully relaxed
-FLEXED_V = 2.25  # The voltage we found when the flex sensor was fully flexed
-FV_MIN = -.5 # The min velocity we would like for the fv of the robot
-FV_MAX = .5 # The max velocity we would like for the robot
+RELAXED_V = 1.65 # The voltage we found when the flex sensor was fully relaxed
+FLEXED_V = 2.3  # The voltage we found when the flex sensor was fully flexed
+FV_MIN = -.75 # The min velocity we would like for the fv of the robot
+FV_MAX = .75 # The max velocity we would like for the robot
 MIN_Y = -1000 # The min g reading we found on the accelerometer
 MAX_Y = 1000 # The max g reading we found on the accelerometer
-RV_MIN = -.5 # The min velocity we would like for the rv of the robot
-RV_MAX = .5 # The max velocity we would like for the rv of the robot
+RV_MIN = -1 # The min velocity we would like for the rv of the robot
+RV_MAX = 1 # The max velocity we would like for the rv of the robot
 num_states = 7 # The number of states we would like in our prob models
 CONFIDENCE_THRESHOLD = .95
 fv_states = [i for i in range(num_states)]
@@ -112,7 +112,6 @@ def moveInstruction(voltage):
 
 
 
-
 # ------------------------
 # MAIN LOOP OF THE PROGRAM
 # ------------------------
@@ -129,6 +128,7 @@ def loop(robot_data):
     recording = (voltage1>threshold1)
     if ((not recording) and (not reversing) and (len(traj)>0)):
         print("relaxed")
+        time.sleep(1)
         reversing = True
     if reversing:
         if len(traj) == 0:
