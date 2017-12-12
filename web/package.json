@@ -1,0 +1,23 @@
+{
+  "name": "kam-601",
+  "version": "1.0.0",
+  "description": "this is the web server that serves as a common point between the robot and glove",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/KAM-601/6.01-Final-Project.git"
+  },
+  "author": "Angel Alvarez, KAM-601",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KAM-601/6.01-Final-Project/issues"
+  },
+  "homepage": "https://github.com/KAM-601/6.01-Final-Project#readme",
+  "dependencies": {
+    "express": "^4.16.2"
+  }
+}
