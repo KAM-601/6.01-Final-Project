@@ -26,16 +26,19 @@ def on_start():
     robot.s.connect((HOST, PORT))
     robot.s.sendall(b'ready')
   
-
 def on_step(step_duration):
     #somewhere her I have to make sure dat is the latest data
     data = robot.s.recv(4096)
+    if not data: on_stop()
+    print(len(data))
+
     data = data.decode('UTF-8')
     data = data.split(' ')
     print(data)
     if len(data) != 4:
         print("invalid: early return.")
         return
+    
     # Receives some instructions from gloveBrain.py
     if data[1] != 'None':
         robot.fv = float(data[1])
@@ -44,7 +47,12 @@ def on_step(step_duration):
         robot.rv = float(data[3])
         print(robot.rv)
 def on_stop():
-    pass
+    print("starting stop sequence")
+    robot.fv = 0
+    robot.rv = 0
+    robot.s.close()
 
 def on_shutdown():
-    pass
+    robot.fv = 0
+    robot.rv = 0
+    
