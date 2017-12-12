@@ -6,17 +6,6 @@ from soar.robot.pioneer import PioneerRobot
 import socket
 import http.client
 
-
-# --------------------------------
-# GET IP ADDRESS FROM COMMON POINT
-# --------------------------------
-h1 = http.client.HTTPConnection('next205.mit.edu')
-h1.request('GET', '/glove')
-res = h1.getresponse()
-HOST = res.read().decode('UTF-8').strip('"')
-
-PORT = 6010    # The same port as the server
-
 robot = PioneerRobot()
 robot.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -24,6 +13,16 @@ def on_load():
     pass
 
 def on_start():
+    # --------------------------------
+    # GET IP ADDRESS FROM COMMON POINT
+    # --------------------------------
+    h1 = http.client.HTTPConnection('next205.mit.edu')
+    h1.request('GET', '/glove')
+    res = h1.getresponse()
+    HOST = res.read().decode('UTF-8').strip('"')
+
+    PORT = 6010    # The same port as the server
+    
     robot.s.connect((HOST, PORT))
     robot.s.sendall(b'ready')
   

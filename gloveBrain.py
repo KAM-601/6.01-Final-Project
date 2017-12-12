@@ -158,7 +158,6 @@ def loop(robot_data):
         fv_max_elt = fv_belief.max_prob_elt()
         #print("Most confident fv state is", fv_max_elt, "with a prob of:", fv_belief.prob(fv_max_elt))
         if fv_belief.prob(fv_max_elt) > CONFIDENCE_THRESHOLD:
-            GPIO.output(18,GPIO.HIGH)
             fv_belief = uniform_dist(fv_states)
             fv = mapping(fv_dict[fv_max_elt], RELAXED_V, FLEXED_V, FV_MAX, FV_MIN)
             #print("Sending an fv of:", fv, "m/s")
@@ -167,14 +166,12 @@ def loop(robot_data):
         rv_max_elt = rv_belief.max_prob_elt()
         #print("Most confident rv state is", rv_max_elt, "with a prob of:", rv_belief.prob(rv_max_elt))
         if rv_belief.prob(rv_max_elt) > CONFIDENCE_THRESHOLD:
-            GPIO.output(23,GPIO.HIGH)
             rv_belief = uniform_dist(rv_states)
             rv = mapping(rv_dict[rv_max_elt], MIN_Y, MAX_Y, RV_MIN, RV_MAX)
             #print("Sending an rv of:", rv, "rad/s")
 
         print()
         time.sleep(.05)  #relax for .1 second before continuing
-        GPIO.output(23,GPIO.LOW)
         GPIO.output(18,GPIO.LOW)
         
         if (fv, rv) == lastv:
@@ -188,6 +185,7 @@ def loop(robot_data):
             return None
         else:
             lastv = (fv,rv)
+            GPIO.output(18,GPIO.HIGH)
             return "fv: " + str(fv) + " " + "rv: " + str(rv)
 
     ## General plan:
@@ -274,6 +272,7 @@ def ServeLoop():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((HOSTNAME, PORT))
             s.listen(1)
+            GPIO.output(23,GPIO.HIGH)
             print("Now Listening on: " + str(HOSTNAME) + ":" + str(PORT))
             while True:
                 beginConnection(s)
